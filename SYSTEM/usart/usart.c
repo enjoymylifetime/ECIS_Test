@@ -190,7 +190,7 @@ void USART2_IRG_Handler(void)
 	  else if(USART_GetITStatus(USART2,USART_IT_TXE)!=RESET)
 		{
 		 USART_SendData(USART2,UsartData.TxBuffer2[UsartData.TxBuffer2Ptr++]);
-		 if(UsartData.TxBuffer2Ptr>UsartData.TxBuffer2Num)
+		 if(UsartData.TxBuffer2Ptr>=UsartData.TxBuffer2Num)
 		    {
 		       //SoftDelayms(2);
                      USART_ITConfig(USART2,USART_IT_TXE,DISABLE);    

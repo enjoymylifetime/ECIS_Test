@@ -59,7 +59,7 @@ extern	COMPACSTR  ComSendCmdPac;      //上传数据包
 
 
 void FuncCommunication(void);
-
+u16 ASCII_change(u8 Hex_input);
 void	readSampleParam(void);
 
 

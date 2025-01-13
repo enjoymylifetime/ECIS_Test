@@ -80,7 +80,7 @@ int main(void)
 	delay_ms(1000);
 	ParameterRecovery();
 	USART1_Configuration(9600);        //SD卡
-	USART2_Configuration(57600);    //485发送
+	USART2_Configuration(115200);    //485发送
 	
 	//TIM5_Int_Init(5-1,84-1);   	//(5 x 84) / 84M = 0.00001s.   5us定时
 	OSInit();

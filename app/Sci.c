@@ -176,8 +176,59 @@ void	readSampleParam(void)
 
 }
 
+u8 SendUsartData[192];
+u8 test[192];
+u8 ACSiiData[384];
+u16 ASCII_change(u8 Hex_input)
+{
+	u8 high_bit,high_cout;
+	u8 low_bit,low_cout;
+	char high_nibble;
+  char low_nibble;
+	u8 rec_bit;
+	u16 ASCII_output;
+	
+		high_nibble=Hex_input&0xf0;//高位推导
+		high_bit=high_nibble;
+		high_bit=high_nibble>>4;
+		if(high_bit<=0x09)//
+		{
+			rec_bit=1;//数字
+			high_cout=high_bit+0x30;
+		}
+		else
+			{
+				rec_bit=0;//字母
+				high_cout=(high_bit-0x0a)+0x61;
+				}
+
+		low_nibble=Hex_input&0x0f;//低位推导
+		low_bit=low_nibble;
+		if(low_bit<=0x09)//
+		{
+			rec_bit=1;//数字
+			low_cout=low_bit+0x30;
+		}
+		else
+			{
+				rec_bit=0;//字母
+				low_cout=(low_bit-0x0a)+0x61;
+				}
+			ASCII_output=high_cout<<8|low_cout;
+				return ASCII_output;
+			}
+
 void FuncCommunication(void)
 {
+	int ChangeNUM;
+	int ChangeNUMj,i,j,k,m,n,p,q;
+	u8 time1=0x01;
+	u8 time2=0x01;
+	u8 time3=0x01;
+	u8 time4=0x01;
+	u32 bit1,bit2,bit3,bit4,bit;
+	u32  frequency;               //当前频率（4字节）    
+	u16 crc_enda;
 	if(1)//ComCon.ReceivePacSign==1)    //接受到数据包
 	{
 		if(ComRecPac.Type==eTargetParam)       // 0: read/write parameter
@@ -224,14 +275,90 @@ void FuncCommunication(void)
 	if(Ad5933Con.DataSendSign==1)
 	{
 
-		ComSendDataPac.Type=1;
-		ComSendDataPac.Cmd=0;
-
-              ComSendDataPac.FreBegin=SysPara.FreBegin;
+//		ComSendDataPac.Type=1;
+//		ComSendDataPac.Cmd=0;
+////用户数据
+//    ComSendDataPac.FreBegin=SysPara.FreBegin;//4个字节，当前频率
+//		memcpy(ComSendDataPac.Data,(u8 *)Ad5933Data,168);//14通道*3*4字节=168，取出AD数据
 		
-		memcpy(ComSendDataPac.Data,(u8 *)Ad5933Data,168);
-		//发送ComSendDataPac
-		autoSendDataToPcNow(&ComSendDataPac);
+
+//    memcpy(UsartData.TxBuffer1,Ad5933Data,UsartData.TxBuffer1Num);
+		frequency=SysPara.FreBegin;						//频率
+//发送组包，帧头
+		SendUsartData[0]=0xaa;
+		SendUsartData[1]=0x55;
+		SendUsartData[2]=0x55;
+		SendUsartData[3]=0xaa;
+		SendUsartData[4]=(frequency>>24)&0xff;
+		SendUsartData[5]=(frequency>>16)&0xff;
+		SendUsartData[6]=(frequency>>8)&0xff;
+		SendUsartData[7]= frequency;
+		
+		
+		//AD 转换从[8]开始
+				i=8;
+		for(ChangeNUM=0;ChangeNUM<12;ChangeNUM++)
+		{
+			for(ChangeNUMj=0;ChangeNUMj<3;ChangeNUMj++)
+			{
+				bit=Ad5933Data[ChangeNUM][ChangeNUMj];
+				SendUsartData[i]=(bit>>24)&0xff;
+				SendUsartData[i+1]=(bit>>16)&0xff;
+				SendUsartData[i+2]=(bit>>8)&0xff;
+				SendUsartData[i+3]=(bit)&0xff;
+				i=i+4;
+			}
+		}
+		i=0;
+		
+		for(j=152;j<=175;j++)//多余通道置0
+		{
+			SendUsartData[j]=0x00;
+		}
+		//时间帧填充（修改time1-4值设置时间帧）
+		SendUsartData[176]=time1;
+		SendUsartData[177]=time2;
+		SendUsartData[178]=time3;
+		SendUsartData[179]=time4;
+		//保留位
+		SendUsartData[180]=0x01;
+		SendUsartData[181]=0x01;
+		SendUsartData[182]=0x01;
+		SendUsartData[183]=0x01;
+		SendUsartData[184]=0x01;
+		SendUsartData[185]=0x01;
+		SendUsartData[186]=0x01;
+		SendUsartData[187]=0x01;
+		//CRC校验
+		crc_enda=CRC16(SendUsartData,188);
+		SendUsartData[188]=crc_enda%256;
+		SendUsartData[189]=crc_enda/256;
+		//帧尾
+		SendUsartData[190]=0x5a;
+		SendUsartData[191]=0xa5;
+//for(p=0;p<192;p++)//掉包测试
+//{
+//	SendUsartData[p]=p;
+//}
+		n=0;
+		//转化16进制数字为ASCII码
+		for(m=0;m<192;m++)
+		{
+			bit3=ASCII_change(SendUsartData[m]);
+			bit1=bit3&0xff00;//高位
+			bit1=bit1>>8;
+			bit2=bit3&0x00ff;//低位
+			ACSiiData[n]=bit1;
+			ACSiiData[n+1]=bit2;
+			n=2*m+2;
+			//ASCII码转化回对应的16进制数字
+		}
+
+	  Usart1SendSubFunc(384);
+
+
+
+	  
 		Ad5933Con.DataSendSign=0;
 	}
 }
